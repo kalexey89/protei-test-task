@@ -3,27 +3,24 @@
 #define PROTEI_SERVER_LOGGER_H
 
 #include <mutex>
-#include <string>
+#include <sstream>
+
+#define logger Logger {}
 
 namespace protei
 {
 
-static class Logger final
+class Logger final : public std::ostringstream
 {
 public:
 
     Logger() = default;
-    ~Logger() = default;
-
-public:
-
-    void operator () (const char* format, ...) ;
-    void operator () (const std::string& format, ...);
+    ~Logger();
 
 private:
 
-    std::mutex m_mutex;
-} logger;
+    static std::mutex m_mutex;
+};
 
 } // namespace protei
 

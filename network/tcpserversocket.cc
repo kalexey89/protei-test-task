@@ -31,7 +31,10 @@ bool TcpServerSocket::listening() const noexcept
 
 void TcpServerSocket::listen(const InternetAddress& address, bool reuseAddress, int backlog)
 {
-    m_listening = false;
+    if (m_listening)
+        close();
+
+    m_listening = true;
 
     if (m_handle == InvalidHandle)
         create();
@@ -48,17 +51,9 @@ void TcpServerSocket::listen(const InternetAddress& address, bool reuseAddress, 
 }
 
 
-Socket::Handle TcpServerSocket::accept(InternetAddress& clientAddress)
+Socket::handle_t TcpServerSocket::accept()
 {
-    struct sockaddr_in addr = { 0 };
-    socklen_t addrlen = sizeof(addr);
-    const Handle clientHandle = ::accept(m_handle, reinterpret_cast<sockaddr*>(&addr), &addrlen);
-    if (clientHandle == InvalidHandle)
-        throw NetworkException(errno);
-
-    clientAddress = addr;
-
-    return clientHandle;
+    return ::accept(m_handle, nullptr, nullptr);
 }
 
 } // namespace protei

@@ -5,10 +5,16 @@
 #include "networkexception.h"
 #include "udpsocket.h"
 #include "tcpserver.h"
+#include "udpserver.h"
 #include "logger.h"
 
 #include <arpa/inet.h>
 
+#include <cctype>
+#include <sstream>
+#include <cstring>
+#include <algorithm>
+#include <regex>
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -18,123 +24,155 @@
 #include <thread>
 #include <sys/resource.h>
 #include <unistd.h>
+#include <csignal>
+#include <cstring>
+#include <getopt.h>
 
 using namespace protei;
 
 static constexpr size_t MaxMessageSize = ((1024 * 64) + 1); // 64kb + 1 byte for null terminator
 
-void tcpHandler(Socket::Handle clientHandle)
+namespace {
+
+void onTcpConnection(Socket::handle_t handle);
+void onUdpConnection(UdpSocket &server);
+
+TcpServer tcpServer(onTcpConnection);
+UdpServer udpServer(onUdpConnection);
+
+void handleSignal(int signum)
 {
-    TcpSocket clientSocket(clientHandle, true);
-    clientSocket.setBlocking(false);
-    clientSocket.setKeepAlive(true);
+    tcpServer.close();
+    udpServer.close();
 
-    logger("> New connection from %s\n\n", clientSocket.remoteAddress().toString().c_str());
+    std::cout << std::endl << "Server stoped. Bye-Bye! =)" << std::endl;
 
-    std::array<char, MaxMessageSize> buffer = { '\0' };
-    size_t readed = 0;
-    size_t writed = 0;
-    ssize_t result = 0;
-    ssize_t sresult = 0;
-    do
-    {
-        result = clientSocket.read(buffer.data(), buffer.size(), readed);
-        logger("> Received %u bytes from %s:\n--------------------\n\n%s\n--------------------\n\n",
-               readed, clientSocket.remoteAddress().toString().c_str(), buffer.data());
-
-
-        do
-        {
-            sresult = clientSocket.write(buffer.data(), buffer.size(), writed);
-        }
-        while (writed < readed);
-
-        std::fill(buffer.begin(), buffer.end(), '\0');
-    }
-    while (result > 0);
-
-    logger("> Client %s disconnected!\n", clientSocket.remoteAddress().toString().c_str());
-
-    clientSocket.disconnect();
+    ::exit(signum);
 }
+
+
+void handleInput(const std::string& data, const InternetAddress& from)
+{
+    std::vector<long long> digits = {};
+
+    const std::regex rx("(\\+|-)?[[:digit:]]+");
+    const std::sregex_token_iterator end;
+    std::sregex_token_iterator iter(data.begin(), data.end(), rx, 0);
+    while (iter != end)
+    {
+        try { digits.push_back(std::stoi(*iter++)); }
+        catch (const std::exception& e) { ; }
+    }
+
+    if (digits.size() != 0)
+    {
+        logger << std::endl << "Received " << digits.size() << " digits from " << from << std::endl;
+
+        std::sort(digits.begin(), digits.end(), std::greater<long long>());
+        logger << "Digits in descending form: ";
+        for (const auto& digit : digits)
+        {
+            logger << digit << " ";
+        }
+
+        logger << std::endl;
+
+        logger << "Min: " << digits.back() << ";  Max: " << digits.front() << std::endl;
+        logger << "Digits sum: " << std::accumulate(digits.begin(), digits.end(), 0) << std::endl;
+    }
+}
+
+
+void onTcpConnection(Socket::handle_t handle)
+{
+    TcpSocket client(handle);
+    client.setKeepAlive(true);
+
+    size_t writed = 0;
+    size_t readed = 0;
+
+    std::string input(MaxMessageSize, '\0');
+    while ((client.read(&input[0], input.size(), readed)) != 0)
+    {
+        client.write(input.data(), input.size(), writed);
+
+        if (input.find_first_of("0123456789") != std::string::npos)
+            handleInput(input.substr(0, readed), client.remoteAddress());
+
+        std::fill(input.begin(), input.end(), '\0');
+    }
+}
+
+
+void onUdpConnection(UdpSocket& server)
+{
+    size_t writed = 0;
+    size_t readed = 0;
+
+    InternetAddress client = {};
+
+    std::string input(MaxMessageSize, '\0');
+    while ((server.read(&input[0], input.size(), readed, client)) != 0)
+    {
+        server.write(input.data(), input.size(), writed, client);
+
+        if (input.find_first_of("0123456789") != std::string::npos)
+            handleInput(input.substr(0, readed), client);
+    }
+}
+
+} // namespace
 
 int main(int argc, char* argv[])
 {
+    std::signal(SIGINT, handleSignal);
+    std::signal(SIGTERM, handleSignal);
+    std::signal(SIGABRT, handleSignal);
+
+    // Default servers addresses
+    InternetAddress tcpServerAddress("0.0.0.0", 8080);
+    InternetAddress udpServerAddress("0.0.0.0", 9090);
+
+    const struct option options[] = {
+        { "tcpport", optional_argument, NULL, 't' },
+        { "tcpaddr", optional_argument, NULL, 'a' },
+        { "udpport", optional_argument, NULL, 'u' },
+        { "udpaddr", optional_argument, NULL, 'y' },
+        { NULL, no_argument, NULL, 0 }
+    };
+
+    const char* optstr = "t:a:u:x:";
+    int opt = ::getopt_long(argc, argv, optstr, options, nullptr);
+    while (opt != -1)
+    {
+        switch (opt)
+        {
+            case 't': tcpServerAddress.setPort(std::atoi(optarg)); break;
+            case 'a': tcpServerAddress.setHost(optarg); if (optarg == nullptr) std::printf("optarg\n"); break;
+            case 'u': udpServerAddress.setPort(std::atoi(optarg)); break;
+            case 'y': udpServerAddress.setHost(optarg); break;
+            default: break;
+        }
+
+        opt = ::getopt_long(argc, argv, optstr, options, nullptr);
+    }
 
     try {
-        std::thread tcpServerThread = std::thread([] ()
-        {
-            TcpServer tcpServer(tcpHandler);
-            tcpServer.start(InternetAddress(SpecialIpAddress::Any, 8888));
+        std::thread tcpServerTread = std::thread([&] () {
+            tcpServer.listen(tcpServerAddress);
         });
 
-        tcpServerThread.join();
+        std::thread udpServerThread = std::thread([&] () {
+            udpServer.listen(udpServerAddress);
+        });
 
-
-//        UdpSocket server(InternetAddress("127.0.0.1", 8888));
-//        //server.setBlocking(false);
-//        while (true)
-//        {
-//            std::array<char, 100> buffer = { '\0' };
-//            size_t readed = 0;
-//            InternetAddress addr = {};
-//            while (server.read(buffer.data(), buffer.size(), readed, addr) > 0)
-//            {
-
-//                std::cout << " readed: " << readed << std::endl;
-//                std::cout << " message: " << std::endl << buffer.data() << std::endl;
-
-//                size_t writed = 0;
-//                server.write(buffer.data(), readed, writed, addr);
-//            }
-//        }
-
-
-
-//        TcpServerSocket listener(InternetAddress("127.0.0.1", 8888));
-//        //listener.setBlocking(false);
-//        while (true)
-//        {
-//            TcpSocket clientSocket2;
-//            //clientSocket.setCloseOnDelete(false);
-//            InternetAddress clientAddress;
-//            const Socket::Handle handle = listener.accept(clientSocket2, clientAddress);
-//            {
-
-//                std::cout << " new connection from: " << clientAddress << std::endl;
-
-//                std::thread([handle]() {
-//                    TcpSocket clientSocket(handle, true);
-//                    clientSocket.setBlocking(false);
-//                    clientSocket.setKeepAlive(true);
-
-//                    ssize_t rv = 0;
-//                    do
-//                    {
-//                    std::array<char, 100> buffer = { '\0' };
-//                    size_t readed = 0;
-//                    rv = clientSocket.read(buffer.data(), buffer.size(), readed);
-
-//                    std::cout << " rv: " << rv << std::endl;
-
-//                        //clientSocket.disconnect();
-
-//                    std::cout << " readed bytes: " << readed << std::endl;
-//                    std::cout << " message: " << std::endl << buffer.data() << std::endl;
-//                    }
-//                    while (rv > 0);
-
-//                    clientSocket.disconnect();
-
-//                    std::cout << " conecton closed! " << std::endl;
-//                }).detach();
-//                //client
-//            }
-//        }
+        tcpServerTread.join();
+        udpServerThread.join();
     }
-    catch (const protei::NetworkException& e)
+    catch (const NetworkException& e)
     {
-        std::cerr << e.what() << std::endl;
+        std::cerr << "Network error occured: " << e.what() << " (" << e.errnum() << ")" << std::endl;
+        return -1;
     }
 
     return 0;

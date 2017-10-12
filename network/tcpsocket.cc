@@ -19,7 +19,6 @@ TcpSocket::TcpSocket(const TcpSocket& copy) noexcept :
 {
     m_type = copy.m_type;
     m_handle = copy.m_handle;
-    m_closeOnDelete = copy.m_closeOnDelete;
     m_connected = copy.m_connected;
 }
 
@@ -32,7 +31,7 @@ TcpSocket::TcpSocket(const InternetAddress &address) :
 }
 
 
-TcpSocket::TcpSocket(Handle handle, bool connected) noexcept :
+TcpSocket::TcpSocket(handle_t handle, bool connected) noexcept :
     Socket(Type::Tcp),
     m_connected(connected)
 {
@@ -40,9 +39,13 @@ TcpSocket::TcpSocket(Handle handle, bool connected) noexcept :
 }
 
 
-bool TcpSocket::connected() const noexcept
+TcpSocket::~TcpSocket()
 {
-    return m_connected;
+    if (m_handle != InvalidHandle)
+    {
+        shutdown(Shutdown::Both);
+        close();
+    }
 }
 
 
@@ -67,6 +70,12 @@ void TcpSocket::disconnect()
 
         m_connected = false;
     }
+}
+
+
+bool TcpSocket::connected() const noexcept
+{
+    return m_connected;
 }
 
 
@@ -117,18 +126,6 @@ ssize_t TcpSocket::read(void* data, size_t size, size_t& readed)
     *(static_cast<char*>(data) + size) = '\0';
 
     return result;
-}
-
-
-InternetAddress TcpSocket::localAddress() const
-{
-    return Socket::localAddress();
-}
-
-
-InternetAddress TcpSocket::remoteAddress() const
-{
-    return Socket::remoteAddress();
 }
 
 } // namespace protei

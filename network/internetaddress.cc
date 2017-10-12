@@ -204,7 +204,7 @@ void InternetAddress::setAddress(const address_t &address)
 
 std::string InternetAddress::toString() const noexcept
 {
-    std::array<char, INET_ADDRSTRLEN + 1> buffer = { '\0' };
+    std::array<char, INET_ADDRSTRLEN> buffer = { '\0' };
     if (::inet_ntop(AF_INET, &m_address.sin_addr, buffer.data(), buffer.size()) == nullptr)
     {
         return std::string("0.0.0.0:0");

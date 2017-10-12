@@ -1,6 +1,6 @@
 
-#ifndef PROTEI_TCPSOCKET_H
-#define PROTEI_TCPSOCKET_H
+#ifndef PROTEI_NETWORK_TCPSOCKET_H
+#define PROTEI_NETWORK_TCPSOCKET_H
 
 #include "socket.h"
 
@@ -15,18 +15,16 @@ public:
     TcpSocket();
     TcpSocket(const TcpSocket& copy) noexcept;
     TcpSocket(const InternetAddress& address);
-    TcpSocket(Handle handle, bool connected = true) noexcept;
-    virtual ~TcpSocket() = default;
+    TcpSocket(handle_t handle, bool connected = true) noexcept;
+    virtual ~TcpSocket();
 
-    bool connected() const noexcept;
     void connect(const InternetAddress& address);
     void disconnect();
 
+    bool connected() const noexcept;
+
     ssize_t write(const void* data, size_t size, size_t& writed);
     ssize_t read(void* data, size_t size, size_t& readed);
-
-    InternetAddress localAddress() const;
-    InternetAddress remoteAddress() const;
 
     inline void setKeepAlive(bool enabled)
     {
@@ -53,16 +51,6 @@ public:
         Socket::setReceiveBufferSize(size);
     }
 
-    inline void setSendTimeout(const timeval& timeout)
-    {
-        Socket::setSendTimeout(timeout);
-    }
-
-    inline void setReceiveTimeout(const timeval& timeout)
-    {
-        Socket::setReceiveTimeout(timeout);
-    }
-
     inline bool tcpNoDelay() const
     {
         return Socket::tcpNoDelay();
@@ -80,4 +68,4 @@ private:
 
 } // namespace protei
 
-#endif // PROTEI_TCPSOCKET_H
+#endif // PROTEI_NETWORK_TCPSOCKET_H

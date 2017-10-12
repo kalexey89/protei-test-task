@@ -1,6 +1,6 @@
 
-#ifndef PROTEI_SOCKETADDRESS_H
-#define PROTEI_SOCKETADDRESS_H
+#ifndef PROTEI_NETWORK_INTERNETADDRESS_H
+#define PROTEI_NETWORK_INTERNETADDRESS_H
 
 #include <netdb.h>
 
@@ -82,4 +82,4 @@ inline std::ostream& operator << (std::ostream& cout, const InternetAddress& add
 
 } // namespace protei
 
-#endif // PROTEI_SOCKETADDRESS_H
+#endif // PROTEI_NETWORK_INTERNETADDRESS_H

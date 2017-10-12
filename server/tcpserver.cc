@@ -1,5 +1,6 @@
 
 #include "tcpserver.h"
+#include "networkexception.h"
 #include "internetaddress.h"
 
 #include <thread>
@@ -7,51 +8,28 @@
 namespace protei
 {
 
-
-TcpServer::TcpServer() :
-    m_requestHandler(nullptr),
-    m_started(false)
-{ ; }
-
-
-TcpServer::TcpServer(const request_handler_t& handler) :
-    m_requestHandler(handler),
-    m_started(false)
-{ ; }
-
-
-bool TcpServer::started() const noexcept
+void TcpServer::listen(const InternetAddress& address)
 {
-    return m_started;
+    if (m_socket.listening())
+        return;
+
+    m_socket.setTcpNoDelay(true);
+    m_socket.listen(address, true, TcpServer::Backlog);
+
+    while (m_socket.listening())
+        std::thread(std::bind(m_handler, m_socket.accept())).detach();
 }
 
 
-void TcpServer::start(const InternetAddress& address)
+void TcpServer::close()
 {
-    m_serverSocket.setTcpNoDelay(true);
-    m_serverSocket.listen(address, true, TcpServer::backlog);
-
-    m_started = true;
-
-    InternetAddress clientAddress = {};
-    Socket::Handle clientHandle = Socket::InvalidHandle;
-    while (m_started)
-    {
-        clientHandle = m_serverSocket.accept(clientAddress);
-        std::thread(std::bind(m_requestHandler, clientHandle)).detach();
-    }
+    m_socket.close();
 }
 
 
-void TcpServer::stop()
+bool TcpServer::listening() const noexcept
 {
-    m_started = false;
-}
-
-
-void TcpServer::setRequestHandler(const request_handler_t& handler)
-{
-    m_requestHandler = handler;
+    return m_socket.listening();
 }
 
 } // namespace protei

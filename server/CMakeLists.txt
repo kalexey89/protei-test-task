@@ -4,7 +4,9 @@ add_executable(server
     logger.h
     logger.cc
     tcpserver.h
-    tcpserver.cc)
+    tcpserver.cc
+    udpserver.h
+    udpserver.cc)
 
 target_link_libraries(server PUBLIC
     network

@@ -19,7 +19,6 @@ UdpSocket::UdpSocket(const UdpSocket& copy) noexcept :
 {
     m_type = copy.m_type;
     m_handle = copy.m_handle;
-    m_closeOnDelete = copy.m_closeOnDelete;
     m_binded = copy.m_binded;
 }
 
@@ -32,7 +31,7 @@ UdpSocket::UdpSocket(const InternetAddress& address) :
 }
 
 
-UdpSocket::UdpSocket(Handle handle, bool binded) noexcept :
+UdpSocket::UdpSocket(handle_t handle, bool binded) noexcept :
     Socket(Type::Udp),
     m_binded(binded)
 {

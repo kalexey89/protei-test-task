@@ -30,7 +30,7 @@ const char* NetworkException::what() const noexcept
 }
 
 
-int NetworkException::errnum() const
+int NetworkException::errnum() const noexcept
 {
     return m_errnum;
 }

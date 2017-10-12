@@ -1,10 +1,12 @@
 
-#ifndef PROTEI_SOCKET_H
-#define PROTEI_SOCKET_H
+#ifndef PROTEI_NETWORK_SOCKET_H
+#define PROTEI_NETWORK_SOCKET_H
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/poll.h>
 
+#include <vector>
 #include <string>
 
 namespace protei
@@ -17,12 +19,13 @@ public:
 
     enum class Shutdown
     {
-        Read = 0,   /* SHUT_RD */
-        Write = 1,  /* SHUT_WR */
-        Both = 2    /* SHUT_RDWR */
+        Read    = 0,   /* SHUT_RD */
+        Write   = 1,  /* SHUT_WR */
+        Both    = 2    /* SHUT_RDWR */
     };
 
-    typedef int Handle;
+    typedef int handle_t;
+    typedef struct pollfd pollfd_t;
 
 public:
 
@@ -30,21 +33,18 @@ public:
 
 public:
 
-    operator Handle () const;
+    operator handle_t () const noexcept;
 
 public:
 
     bool valid() const noexcept;
 
-    bool blocking() const;
-    void setBlocking(bool enabled);
-
-    bool closeOnDelete() const noexcept;
-    void setCloseOnDelete(bool enabled) noexcept;
+    InternetAddress localAddress() const;
+    InternetAddress remoteAddress() const;
 
 public:
 
-    static constexpr Handle InvalidHandle = -1;
+    static constexpr handle_t InvalidHandle = -1;
 
 protected:
 
@@ -54,21 +54,17 @@ protected:
         Udp = SOCK_DGRAM
     };
 
-
 protected:
 
     Socket() = delete;
     Socket(Type type) noexcept;
 
-    Handle handle() const noexcept;
+    handle_t handle() const noexcept;
 
     void create();
 
     void shutdown(Shutdown how);
     void close();
-
-    InternetAddress localAddress() const;
-    InternetAddress remoteAddress() const;
 
     void setReuseAddress(bool enabled);
     void setKeepAlive(bool enabled);
@@ -79,19 +75,15 @@ protected:
     size_t receiveBufferSize() const;
     void setReceiveBufferSize(size_t size);
 
-    void setSendTimeout(const timeval& timeout);
-    void setReceiveTimeout(const timeval& timeout);
-
     bool tcpNoDelay() const;
     void setTcpNoDelay(bool enabled);
 
 protected:
 
-    Handle m_handle;
+    handle_t m_handle;
     Type m_type;
-    bool m_closeOnDelete;
 };
 
 } // namespace protei
 
-#endif // PROTEI_SOCKET_H
+#endif // PROTEI_NETWORK_SOCKET_H

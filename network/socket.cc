@@ -7,21 +7,19 @@
 
 #include <unistd.h>
 #include <fcntl.h>
-#include <poll.h>
 
 namespace protei
 {
 
 Socket::Socket(Type type) noexcept :
     m_handle(InvalidHandle),
-    m_type(type),
-    m_closeOnDelete(true)
+    m_type(type)
 { ; }
 
 
 Socket::~Socket()
 {
-    if (m_handle != InvalidHandle && m_closeOnDelete)
+    if (m_handle != InvalidHandle)
     {
         ::shutdown(m_handle, static_cast<int>(Shutdown::Both));
         ::close(m_handle);
@@ -29,7 +27,7 @@ Socket::~Socket()
 }
 
 
-Socket::operator Handle () const
+Socket::operator handle_t () const noexcept
 {
     return m_handle;
 }
@@ -41,63 +39,7 @@ bool Socket::valid() const noexcept
 }
 
 
-bool Socket::blocking() const
-{
-    bool value = false;
-#ifdef O_NONBLOCK
-    const int flags = ::fcntl(m_handle, F_GETFL, 0);
-    value = ((flags > 0) && ((flags & O_NONBLOCK) == 0));
-#elif defined(SO_NONBLOCK)
-    int optval = 0;
-    socklen_t optlen = sizeof(value);
-    if (::getsockopt(m_handle, SOL_SOCKET, SO_NONBLOCK, &optval, &optlen) == -1)
-    {
-        throw NetworkException(errno);
-    }
-
-    value = optval == 0 ? true : false;
-#endif
-    return value;
-}
-
-
-void Socket::setBlocking(bool enabled)
-{
-#ifdef O_NONBLOCK
-    int flags = ::fcntl(m_handle, F_GETFL, 0);
-    if (flags < 0)
-    {
-        throw NetworkException(errno);
-    }
-
-    flags = enabled ? flags &=(~O_NONBLOCK) : flags |= O_NONBLOCK;
-    if (::fcntl(m_handle, F_SETFL, flags) == -1)
-    {
-        throw NetworkException(errno);
-    }
-#elif defined(SO_NONBLOCK)
-    int optval = enabled ? 0 : 1;
-    if (::setsockopt(m_handle, SOL_SOCKET, SO_NONBLOCK, &optval, sizeof(optval)) == -1)
-    {
-        throw NetworkException(errno);
-    }
-#endif
-}
-
-
-bool Socket::closeOnDelete() const noexcept
-{
-    return m_closeOnDelete;
-}
-
-
-void Socket::setCloseOnDelete(bool enabled) noexcept
-{
-    m_closeOnDelete = enabled;
-}
-
-
-Socket::Handle Socket::handle() const noexcept
+Socket::handle_t Socket::handle() const noexcept
 {
     return m_handle;
 }
@@ -105,6 +47,12 @@ Socket::Handle Socket::handle() const noexcept
 
 void Socket::create()
 {
+    if (m_handle != InvalidHandle)
+    {
+        shutdown(Shutdown::Both);
+        close();
+    }
+
     switch (m_type)
     {
         case Type::Tcp: m_handle = ::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP); break;
@@ -119,6 +67,9 @@ void Socket::create()
 
 void Socket::shutdown(Shutdown how)
 {
+    if (m_handle == InvalidHandle)
+        return;
+
     if (::shutdown(m_handle, static_cast<int>(how)) == -1)
         throw NetworkException(errno);
 }
@@ -126,6 +77,9 @@ void Socket::shutdown(Shutdown how)
 
 void Socket::close()
 {
+    if (m_handle == InvalidHandle)
+        return;
+
     if (::close(m_handle) == -1)
         throw NetworkException(errno);
 
@@ -220,24 +174,6 @@ void Socket::setReceiveBufferSize(size_t size)
 {
 #ifdef SO_RCVBUF
     if (::setsockopt(m_handle, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) == -1)
-        throw NetworkException(errno);
-#endif
-}
-
-
-void Socket::setSendTimeout(const timeval& timeout)
-{
-#ifdef SO_SNDTIMEO
-    if (::setsockopt(m_handle, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) == -1)
-        throw NetworkException(errno);
-#endif
-}
-
-
-void Socket::setReceiveTimeout(const timeval& timeout)
-{
-#ifdef SO_RCVTIMEO
-    if (::setsockopt(m_handle, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) == -1)
         throw NetworkException(errno);
 #endif
 }

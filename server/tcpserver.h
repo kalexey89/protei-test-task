@@ -3,41 +3,37 @@
 #define PROTEI_TCPSERVER_H
 
 #include "tcpserversocket.h"
+#include "tcpsocket.h"
 
 #include <functional>
-#include <atomic>
-#include <thread>
 
 namespace protei
 {
 
 class InternetAddress;
-class TcpServer final
+class TcpServer
 {
 public:
 
-    typedef std::function<void (Socket::Handle clientHandle)> request_handler_t;
+    typedef std::function<void(Socket::handle_t)> handler_t;
 
 public:
 
-    TcpServer();
-    TcpServer(const request_handler_t& handler);
+    TcpServer() = delete;
+    inline explicit TcpServer(const handler_t& handler) : m_handler(handler) { ; }
+    virtual ~TcpServer() = default;
 
-    bool started() const noexcept;
-    void start(const InternetAddress& address);
-    void startDetached(const InternetAddress& address);
-    void stop();
+    void listen(const InternetAddress& address);
+    void close();
 
-    void setRequestHandler(const request_handler_t& handler);
+    bool listening() const noexcept;
 
 private:
 
-    static constexpr size_t backlog = 16;
+    static constexpr int Backlog = 64;
 
-    TcpServerSocket m_serverSocket;
-    request_handler_t m_requestHandler;
-    std::atomic_bool m_started;
-    std::thread m_thread;
+    TcpServerSocket m_socket;
+    handler_t m_handler;
 };
 
 } // namespace protei

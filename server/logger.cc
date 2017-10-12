@@ -1,26 +1,17 @@
 
 #include "logger.h"
 
-#include <cstdarg>
-#include <cstring>
+#include <iostream>
 
 namespace  protei
 {
 
-void Logger::operator () (const char* format, ...)
+std::mutex Logger::m_mutex = {};
+
+Logger::~Logger()
 {
-    std::lock_guard<std::mutex> locker(m_mutex);
-
-    std::va_list args;
-    va_start(args, format);
-    std::vprintf(format, args);
-    va_end(args);
+    std::lock_guard<std::mutex> guard(m_mutex);
+    std::cout << this->str();
 }
-
-void Logger::operator () (const std::string& format, ...)
-{
-    operator () (format.c_str());
-}
-
 
 } // namespace protei

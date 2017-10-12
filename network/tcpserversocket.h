@@ -1,6 +1,6 @@
 
-#ifndef PROTEI_TCPSERVERSOCKET_H
-#define PROTEI_TCPSERVERSOCKET_H
+#ifndef PROTEI_NETWORK_TCPSERVERSOCKET_H
+#define PROTEI_NETWORK_TCPSERVERSOCKET_H
 
 #include "socket.h"
 
@@ -8,7 +8,6 @@ namespace protei
 {
 
 class InternetAddress;
-class TcpSocket;
 class TcpServerSocket : public Socket
 {
 public:
@@ -18,16 +17,16 @@ public:
 
 public:
 
-    bool listening() const noexcept;
     void listen(const InternetAddress& address, bool reuseAddress = true, int backlog = SOMAXCONN);
-
-    Handle accept(InternetAddress& clientAddress);
-
     inline void close()
     {
         Socket::close();
         m_listening = false;
     }
+
+    bool listening() const noexcept;
+
+    handle_t accept();
 
     inline void setReuseAddress(bool enabled)
     {
@@ -51,4 +50,4 @@ protected:
 
 } // namespace protei
 
-#endif // PROTEI_TCPSERVERSOCKET_H
+#endif // PROTEI_NETWORK_TCPSERVERSOCKET_H

@@ -1,6 +1,6 @@
 
-#ifndef PROTEI_NETWORKEXCEPTION_H
-#define PROTEI_NETWORKEXCEPTION_H
+#ifndef PROTEI_NETWORK_NETWORKEXCEPTION_H
+#define PROTEI_NETWORK_NETWORKEXCEPTION_H
 
 #include <errno.h>
 
@@ -23,7 +23,7 @@ public:
 
     const char* what() const noexcept override;
 
-    int errnum() const;
+    int errnum() const noexcept;
 
 private:
 
@@ -33,4 +33,4 @@ private:
 
 } // namespace protei
 
-#endif // PROTEI_NETWORKEXCEPTION_H
+#endif // PROTEI_NETWORK_NETWORKEXCEPTION_H

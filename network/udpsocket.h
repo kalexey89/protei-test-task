@@ -1,6 +1,6 @@
 
-#ifndef PROTEI_UDPSOCKET_H
-#define PROTEI_UDPSOCKET_H
+#ifndef PROTEI_NETWORK_UDPSOCKET_H
+#define PROTEI_NETWORK_UDPSOCKET_H
 
 #include "socket.h"
 
@@ -8,7 +8,6 @@ namespace protei
 {
 
 class InternetAddress;
-
 class UdpSocket : public Socket
 {
 public:
@@ -16,7 +15,7 @@ public:
     UdpSocket();
     UdpSocket(const UdpSocket& copy) noexcept;
     UdpSocket(const InternetAddress& address);
-    UdpSocket(Handle handle, bool binded = false) noexcept;
+    UdpSocket(handle_t handle, bool binded = false) noexcept;
     virtual ~UdpSocket() = default;
 
 public:
@@ -63,16 +62,6 @@ public:
         Socket::setReceiveBufferSize(size);
     }
 
-    inline void setSendTimeout(const timeval& timeout)
-    {
-        Socket::setSendTimeout(timeout);
-    }
-
-    inline void setReceiveTimeout(const timeval& timeout)
-    {
-        Socket::setReceiveTimeout(timeout);
-    }
-
 private:
 
     bool m_binded;
@@ -80,4 +69,4 @@ private:
 
 } // namespace protei
 
-#endif // PROTEI_UDPSOCKET_H
+#endif // PROTEI_NETWORK_UDPSOCKET_H
