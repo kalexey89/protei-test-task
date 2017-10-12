@@ -24,16 +24,25 @@ void initTcpClient(const std::string& host, InternetAddress::port_t port)
     size_t readed = 0;
     size_t writed = 0;
 
-    std::string input(MaxMessageSize, '\0');
-    while (std::cin.getline(&input[0], MaxMessageSize))
+    std::string buffer(MaxMessageSize, '\0');
+
+    std::cout << std::endl << "Client: ";
+    while (std::cin.getline(&buffer[0], MaxMessageSize))
     {
-        socket.write(input.c_str(), std::cin.gcount(), writed);
+        const size_t inputed = std::cin.gcount();
+        if (inputed == 5 && buffer.substr(0, inputed - 1) == "quit")
+            break;
 
-        std::string output(writed, '\0');
-        socket.read(&output[0], writed, readed);
-        std::cout << output << std::endl;
+        socket.write(buffer.data(), inputed, writed);
+        if (socket.read(&buffer[0], inputed, readed) == 0)
+        {
+            std::cout << std::endl << "Connection closed" << std::endl;
+            exit(EXIT_SUCCESS);
+        }
 
-        std::fill(input.begin(), input.begin() + writed, '\0');
+        std::cout << "Server: " << buffer.substr(0, inputed) << std::endl;
+        std::fill(buffer.begin(), buffer.begin() + inputed, '\0');
+        std::cout << std::endl << "Client: ";
     }
 }
 
@@ -41,23 +50,29 @@ void initTcpClient(const std::string& host, InternetAddress::port_t port)
 void initUdpClient(const std::string& host, InternetAddress::port_t port)
 {
     InternetAddress addr(host, port);
+    InternetAddress tmp = {};
+
     UdpSocket socket;
 
     size_t readed = 0;
     size_t writed = 0;
 
-    std::string input(MaxMessageSize, '\0');
-    while (std::cin.getline(&input[0], MaxMessageSize))
+    std::string buffer(MaxMessageSize, '\0');
+
+    std::cout << std::endl << "Client: ";
+    while (std::cin.getline(&buffer[0], MaxMessageSize))
     {
-        socket.write(input.data(), std::cin.gcount(), writed, addr);
+        const size_t inputed = std::cin.gcount();
+        if (inputed == 5 && buffer.substr(0, inputed - 1) == "quit")
+            break;
 
-        std::string output(writed, '\0');
+        socket.write(buffer.data(), inputed, writed, addr);
+        std::cout << "read: " << socket.read(&buffer[0], inputed, readed, tmp) <<std::endl;
+        std::cout << "Server: " << buffer.substr(0, inputed) << std::endl;
 
-        InternetAddress tmp = {};
-        socket.read(&output[0], writed, readed, tmp);
-        std::cout << output << std::endl;
+        std::fill(buffer.begin(), buffer.begin() + inputed, '\0');
 
-        std::fill(input.begin(), input.begin() + writed, '\0');
+        std::cout << std::endl << "Client: ";
     }
 }
 
