@@ -56,6 +56,11 @@ void UdpSocket::bind(const InternetAddress &address)
     m_binded = true;
 }
 
+void UdpSocket::connect(const InternetAddress& address)
+{
+    ::connect(m_handle, static_cast<const sockaddr*>(address), static_cast<socklen_t>(address));
+}
+
 
 ssize_t UdpSocket::write(const void* data, size_t size, size_t& writed, const InternetAddress& address)
 {

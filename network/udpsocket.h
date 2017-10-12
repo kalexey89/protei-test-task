@@ -23,6 +23,8 @@ public:
     bool binded() const noexcept;
     void bind(const InternetAddress& address);
 
+    void connect(const InternetAddress& address);
+
     ssize_t write(const void* data, size_t size, size_t& writed, const InternetAddress& address);
     ssize_t read(void* data, size_t size, size_t& readed, InternetAddress& address);
 

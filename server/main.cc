@@ -1,36 +1,24 @@
 
-#include "tcpsocket.h"
-#include "tcpserversocket.h"
 #include "internetaddress.h"
 #include "networkexception.h"
-#include "udpsocket.h"
 #include "tcpserver.h"
 #include "udpserver.h"
 #include "logger.h"
 
-#include <arpa/inet.h>
+#include <getopt.h>
 
-#include <cctype>
-#include <sstream>
 #include <cstring>
 #include <algorithm>
 #include <regex>
 #include <iostream>
 #include <string>
-#include <sstream>
 #include <array>
-#include <future>
-#include <functional>
 #include <thread>
-#include <sys/resource.h>
-#include <unistd.h>
 #include <csignal>
-#include <cstring>
-#include <getopt.h>
 
 using namespace protei;
 
-static constexpr size_t MaxMessageSize = ((1024 * 64) + 1); // 64kb + 1 byte for null terminator
+static constexpr size_t MaxMessageSize = 65507; // Max UDP message size
 
 namespace {
 
@@ -94,12 +82,12 @@ void onTcpConnection(Socket::handle_t handle)
     std::string input(MaxMessageSize, '\0');
     while ((client.read(&input[0], input.size(), readed)) != 0)
     {
-        client.write(input.data(), input.size(), writed);
+        client.write(input.data(), readed, writed);
 
         if (input.find_first_of("0123456789") != std::string::npos)
             handleInput(input.substr(0, readed), client.remoteAddress());
 
-        std::fill(input.begin(), input.end(), '\0');
+        std::fill(input.begin(), input.begin() + readed, '\0');
     }
 }
 
@@ -109,15 +97,15 @@ void onUdpConnection(UdpSocket& server)
     size_t writed = 0;
     size_t readed = 0;
 
-    InternetAddress client = {};
+    InternetAddress from = {};
 
     std::string input(MaxMessageSize, '\0');
-    while ((server.read(&input[0], input.size(), readed, client)) != 0)
+    while ((server.read(&input[0], input.size(), readed, from)) != 0)
     {
-        server.write(input.data(), input.size(), writed, client);
+        server.write(input.data(), readed, writed, from);
 
         if (input.find_first_of("0123456789") != std::string::npos)
-            handleInput(input.substr(0, readed), client);
+            handleInput(input.substr(0, readed), from);
     }
 }
 
@@ -141,14 +129,14 @@ int main(int argc, char* argv[])
         { NULL, no_argument, NULL, 0 }
     };
 
-    const char* optstr = "t:a:u:x:";
+    const char* optstr = "t:a:u:y:";
     int opt = ::getopt_long(argc, argv, optstr, options, nullptr);
     while (opt != -1)
     {
         switch (opt)
         {
             case 't': tcpServerAddress.setPort(std::atoi(optarg)); break;
-            case 'a': tcpServerAddress.setHost(optarg); if (optarg == nullptr) std::printf("optarg\n"); break;
+            case 'a': tcpServerAddress.setHost(optarg); break;
             case 'u': udpServerAddress.setPort(std::atoi(optarg)); break;
             case 'y': udpServerAddress.setHost(optarg); break;
             default: break;
@@ -165,6 +153,9 @@ int main(int argc, char* argv[])
         std::thread udpServerThread = std::thread([&] () {
             udpServer.listen(udpServerAddress);
         });
+
+        logger << "TCP server listening on " << tcpServerAddress << std::endl;
+        logger << "UDP server listening on " << udpServerAddress << std::endl;
 
         tcpServerTread.join();
         udpServerThread.join();
