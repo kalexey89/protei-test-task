@@ -48,7 +48,7 @@ void handleInput(const std::string& data, const InternetAddress& from)
     std::sregex_token_iterator iter(data.begin(), data.end(), rx, 0);
     while (iter != end)
     {
-        try { digits.push_back(std::stoi(*iter++)); }
+        try { digits.push_back(std::stoll(*iter++)); }
         catch (const std::exception& e) { ; }
     }
 
