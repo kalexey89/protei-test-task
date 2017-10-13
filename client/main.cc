@@ -16,10 +16,10 @@ static constexpr size_t MaxMessageSize = 65507; // Max UDP message size
 namespace
 {
 
-void initTcpClient(const std::string& host, InternetAddress::port_t port)
+void initTcpClient(const InternetAddress& address)
 {
     TcpSocket socket;
-    socket.connect(InternetAddress(host, port));
+    socket.connect(address);
 
     size_t readed = 0;
     size_t writed = 0;
@@ -47,11 +47,9 @@ void initTcpClient(const std::string& host, InternetAddress::port_t port)
 }
 
 
-void initUdpClient(const std::string& host, InternetAddress::port_t port)
+void initUdpClient(const InternetAddress& address)
 {
-    InternetAddress addr(host, port);
     InternetAddress tmp = {};
-
     UdpSocket socket;
 
     size_t readed = 0;
@@ -66,7 +64,7 @@ void initUdpClient(const std::string& host, InternetAddress::port_t port)
         if (inputed == 5 && buffer.substr(0, inputed - 1) == "quit")
             break;
 
-        socket.write(buffer.data(), inputed, writed, addr);
+        socket.write(buffer.data(), inputed, writed, address);
         std::cout << "read: " << socket.read(&buffer[0], inputed, readed, tmp) <<std::endl;
         std::cout << "Server: " << buffer.substr(0, inputed) << std::endl;
 
@@ -88,8 +86,7 @@ int main(int argc, char* argv[])
     };
 
     std::string proto = {};
-    std::string address = "127.0.0.1";
-    InternetAddress::port_t port = 0;
+    InternetAddress address("127.0.0.1", 0);
 
     const char* optstr = "q:p:a:";
     int opt = ::getopt_long(argc, argv, optstr, options, nullptr);
@@ -98,8 +95,8 @@ int main(int argc, char* argv[])
         switch (opt)
         {
             case 'q': proto = optarg; break;
-            case 'p': port = std::atoi(optarg); break;
-            case 'a': address = optarg; break;
+            case 'p': address.setPort(std::atoi(optarg)); break;
+            case 'a': address.setHost(optarg); break;
             default: break;
         }
 
@@ -113,8 +110,8 @@ int main(int argc, char* argv[])
     }
 
     try {
-        if (proto == "tcp") initTcpClient(address, port);
-        else if (proto == "udp") initUdpClient(address, port);
+        if (proto == "tcp") initTcpClient(address);
+        else if (proto == "udp") initUdpClient(address);
         else { std::cerr << "Invalid protocol" << std::endl; return 1; }
     }
     catch (const NetworkException& e)
