@@ -103,7 +103,7 @@ int main(int argc, char* argv[])
         opt = ::getopt_long(argc, argv, optstr, options, nullptr);
     }
 
-    if (proto.empty() || port == 0)
+    if (proto.empty() || address.port() == 0)
     {
         std::cerr << "Invalid connection parameters" << std::endl;
         return 1;
